@@ -33,6 +33,27 @@ let generateToken = (user, secretSignature, tokenLife) => {
             });
     });
 };
+
+let generateTokenRole = (role, secretSignature, tokenLife) => {
+    return new Promise((resolve, reject) => {
+        // Định nghĩa những thông tin của user mà bạn muốn lưu vào token ở đây
+        // Thực hiện ký và tạo token
+        jwt.sign(
+            {data: role},
+            secretSignature,
+            {
+                algorithm: "HS256",
+                expiresIn: tokenLife,
+            },
+            (error, token) => {
+                if (error) {
+                    return reject(error);
+                }
+                resolve(token);
+            });
+    });
+};
+
 /**
  * This module used for verify jwt token
  * @param {*} token
@@ -48,7 +69,10 @@ let verifyToken = (token, secretKey) => {
         });
     });
 };
+
+
 module.exports = {
     generateToken: generateToken,
     verifyToken: verifyToken,
+    generateTokenRole:generateTokenRole,
 };

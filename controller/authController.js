@@ -13,6 +13,8 @@ const refreshTokenLife = process.env.REFRESH_TOKEN_LIFE || "365d";
 // Mã secretKey này phải được bảo mật tuyệt đối, các bạn có thể lưu vào biến môi trường hoặc file
 const refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET || "sdms-refresh-token-secret";
 let connection = require('../data/connection');
+
+const hashPasswordSecret="sdms-hash-password-secret"
 /**
  * controller login
  * @param {*} req
@@ -33,16 +35,21 @@ let login = async (req, res) => {
             connection.acquire(function (err, con) {
                 let username = req.body.username;
                 let password = req.body.password;
-                // let hashPassword = crypto.createHmac('sha256', secret)
-                //     .update(password)
-                //     .digest('hex');
+
+
+                let Sjcl=require("sjcl");
+                const myBitArray = Sjcl.hash.sha256.hash(password)
+                const myHash = Sjcl.codec.hex.fromBits(myBitArray)
+
+
+
                 let sqlObject = "SELECT * FROM user WHERE 1 = 1 ";
                 let sqlParams = [];
                 sqlObject = sqlObject + " and username = ? ";
                 sqlParams.push(username);
                 sqlObject = sqlObject + " and password = ? ";
-                sqlParams.push(password);
-                sqlObject = sqlObject + " order by create_date";
+                sqlParams.push(myHash);
+                sqlObject = sqlObject + " order by createDate";
                 sqlObject = sqlObject + " desc limit 1";
                 console.log("Login with " + username);
                 try {
@@ -69,7 +76,7 @@ let login = async (req, res) => {
                                 try {
                                     connection.acquire(function (err, con) {
                                         try {
-                                            let sqlUpdate = "UPDATE user SET access_token = ?,refresh_token = ?, last_update = now() " +
+                                            let sqlUpdate = "UPDATE user SET access_token = ?,refresh_token = ?, \tlast_update = now() " +
                                                 "WHERE 1=1 and id= ?";
                                             let sqlUpdateParams = [];
                                             sqlUpdateParams.push(accessToken);
@@ -86,10 +93,11 @@ let login = async (req, res) => {
                                                 } else {
                                                     return res.status(200).json({
                                                         'username': user.username,
+                                                        'fullname': user.fullname,
+                                                        'status': user.status,
                                                         'role_id': user.role_id,
-                                                        'full_name': user.full_name,
                                                         accessToken,
-                                                        refreshToken
+                                                        refreshToken,
                                                     });
                                                 }
                                             });
@@ -148,7 +156,7 @@ let refreshToken = async (req, res) => {
             let sqlObject = "SELECT * FROM user WHERE 1 = 1 ";
             sqlObject = sqlObject + " and refresh_token = ? ";
             sqlParams.push(refreshTokenFromClient);
-            sqlObject = sqlObject + " order by create_date";
+            sqlObject = sqlObject + " order by createDate";
             sqlObject = sqlObject + " desc limit 1";
             try {
                 con.query(sqlObject, sqlParams, async function (err, result) {
